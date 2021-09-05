@@ -47,3 +47,9 @@ typecheck (Eq (Bool true, Num 5)) IntTy;; (* should return false *)
 typecheck (Eq (Bool false, Num 5)) BoolTy;; (* should return false *)
 typecheck (Eq (Bool false, Bool true)) IntTy;; (* should return false *)
 typecheck (Eq (Bool false, Bool true)) BoolTy;; (* should return true *)
+
+print_string "Additional test cases for problem 4";;
+typecheck (If (Bool false, Bool true, Bool false)) BoolTy;; (* should return true *)
+typecheck (If (Bool false, Num 5, Bool false)) BoolTy;; (* should return false *)
+typecheck (If (Num 5, Bool true, Bool false)) BoolTy;; (* should return false *)
+typecheck (If (Bool false, Bool true, Bool false)) IntTy;; (* should return false *)
