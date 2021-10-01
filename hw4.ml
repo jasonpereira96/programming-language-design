@@ -1,5 +1,9 @@
 open List
 
+let remove_head (l : 'a list) : 'a list = match l with
+  | [] -> []
+  | head :: rest -> rest
+
 type ident = string
 
 type exp = Var of ident | Num of int | Add of exp * exp | Sub of exp * exp
@@ -71,6 +75,14 @@ let rec step_cmd (c : cmd) (k : stack) (s : state) : config option =
                         | Some (BoolVal false) -> Some (c2, k, s)
                         | _ -> None)
   | While (e, c) -> Some (IfC (e, Seq (c, While (e, c)), Skip), k, s)
+  | Return (exp) -> (match k with
+    | [] -> None
+    | (previous_state, ret_ident) :: old_stack ->
+        (* Some(Skip, old_stack, update previous_state ret_ident (Val (IntVal 1)))) *)
+          (match eval_exp exp s with 
+          | Some v -> Some(Skip, old_stack, update previous_state ret_ident (Val v))
+          | _ -> None))
+      
 
 let rec run_config (con : config) : config =
   let (c, k, s) = con in
@@ -88,12 +100,18 @@ let state1 = update (update state0 "x" (Val (IntVal 1)))
   
 let config1 = (Return (Add (Var "x", Var "y")), [(state0, "x")], state1)
 
-let prog1 = Call ("x", "f", [Num 1; Num 2])
+let prog1 = Call ("x", "f", [Num 1; Num 2]);;
+
+print_string "----- Test Cases -----------";;
 
 let (res_c, res_k, res_s) = run_config config1;;
+print_string "should return Some (Val (IntVal 3))";; 
 lookup res_s "x";; (* should return Some (Val (IntVal 3)) *)
+print_string "should return None";; 
 lookup res_s "y";; (* should return None *)
 
-let (res_c, res_k, res_s) = run_prog prog1 state0;;
+print_string "----------------------------------";;
+
+(* let (res_c, res_k, res_s) = run_prog prog1 state0;; *)
 lookup res_s "x";; (* should return Some (Val (IntVal 3)) *)
 lookup res_s "y";; (* should return None *)
