@@ -78,10 +78,13 @@ let rec step_cmd (c : cmd) (k : stack) (s : state) : config option =
   | Return (exp) -> (match k with
     | [] -> None
     | (previous_state, ret_ident) :: old_stack ->
-        (* Some(Skip, old_stack, update previous_state ret_ident (Val (IntVal 1)))) *)
           (match eval_exp exp s with 
           | Some v -> Some(Skip, old_stack, update previous_state ret_ident (Val v))
           | _ -> None))
+  | Call (assignee, fn_name, exps) -> (match lookup s fn_name with
+    | Some (Fun (idents, cmd)) -> (match eval_exps exps s with
+      | Some  l -> Some(cmd, (s, assignee)::k, (add_args s idents l))
+  ))  
       
 
 let rec run_config (con : config) : config =
@@ -112,6 +115,8 @@ lookup res_s "y";; (* should return None *)
 
 print_string "----------------------------------";;
 
-(* let (res_c, res_k, res_s) = run_prog prog1 state0;; *)
+let (res_c, res_k, res_s) = run_prog prog1 state0;;
+print_string "should return Some (Val (IntVal 3))";; 
 lookup res_s "x";; (* should return Some (Val (IntVal 3)) *)
+print_string "should return None";; 
 lookup res_s "y";; (* should return None *)
