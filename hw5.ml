@@ -73,6 +73,9 @@ let rec type_of (ct : class_table) (gamma : context) (e : exp) : typ option =
        | Some IntTy, Some IntTy -> Some IntTy
        | _, _ -> None)
   | Var x -> lookup gamma x
+  | GetField (expression, identifier) -> (match type_of ct gamma expression with
+    | Some (ClassTy c) -> field_type ct c identifier
+    | None -> None) 
 
 let rec typecheck_list (ct : class_table) (gamma : context) (es : exp list) (ts : typ list) : bool =
   match es, ts with
@@ -95,6 +98,7 @@ let rec typecheck_cmd (ct : class_table) (gamma : context) (c : cmd) : bool =
       (match gamma "__ret", type_of ct gamma e with
        | Some t1, Some t2 -> subtype ct t2 t1
        | _, _ -> false)
+  (* | New (object_name, class_name, args) -> (match type_of ct gamma ) *)
 
 (* test cases *)  
 let ct0 d = if d = "Shape" then
@@ -148,9 +152,10 @@ let cmd5 : cmd =
 
 
 print_string "Running test 1";; 
-let test1 = subtype ct0 (ClassTy "Square") (ClassTy "Object") (* should return true *)
+let test1 = subtype ct0 (ClassTy "Square") (ClassTy "Object");; (* should return true *)
 
-(* let test2 = (type_of ct0 gamma0 exp2 = Some IntTy) should return true *)
+print_string "Running test 2";; 
+let test2 = (type_of ct0 gamma0 exp2 = Some IntTy);; (* should return true *)
   
 (* let test3 = typecheck_cmd ct0 gamma0 cmd3 should return true *)
   
