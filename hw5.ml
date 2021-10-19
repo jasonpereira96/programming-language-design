@@ -57,12 +57,13 @@ let lookup_method (ct : class_table) (c : ident) (m : ident) : mdecl option =
 
 let rec subtype (ct : class_table) (t1 : typ) (t2 : typ) : bool = (match t1, t2 with
   | IntTy, ClassTy c -> false
-  | IntTy, IntTy  -> false
+  | IntTy, IntTy  -> true
   | ClassTy c, IntTy  ->  false
-  | ClassTy sub, ClassTy super -> if super = "Object" then true else (if super = sub then true else (subtype ct t1 (ClassTy (match lookup_class ct super with 
-    | Some (cdecl) -> cdecl
-  ).super)))
-)
+  | ClassTy sub, ClassTy super -> if sub = super then true else (if sub = "Object" then false
+    else (match lookup_class ct sub with 
+    | Some (cdecl) -> subtype ct (ClassTy cdecl.super) t2
+    | _ -> false
+    )))
   
 
 let rec type_of (ct : class_table) (gamma : context) (e : exp) : typ option =
@@ -98,7 +99,13 @@ let rec typecheck_cmd (ct : class_table) (gamma : context) (c : cmd) : bool =
       (match gamma "__ret", type_of ct gamma e with
        | Some t1, Some t2 -> subtype ct t2 t1
        | _, _ -> false)
-  (* | New (object_name, class_name, args) -> (match type_of ct gamma ) *)
+  (* | New (object_name, class_name, args) -> (subtype (type_of (lookup gamma object_name)) (type_of class_name)) *)
+  | New (object_name, class_name, args) -> (match (lookup gamma object_name), (lookup_class ct class_name) with
+    | Some (object_type), Some(cdecl) -> (subtype ct object_type (ClassTy class_name) &&  
+            (typecheck_list ct gamma args (types_of_params cdecl.fields)))
+    | _, _ -> false
+  )
+    
 
 (* test cases *)  
 let ct0 d = if d = "Shape" then
@@ -154,10 +161,17 @@ let cmd5 : cmd =
 print_string "Running test 1";; 
 let test1 = subtype ct0 (ClassTy "Square") (ClassTy "Object");; (* should return true *)
 
+print_string "Running test 1b";; 
+let test1b = subtype ct0 (ClassTy "Square") (ClassTy "Shape");; (* should return true *)
+
 print_string "Running test 2";; 
 let test2 = (type_of ct0 gamma0 exp2 = Some IntTy);; (* should return true *)
   
-(* let test3 = typecheck_cmd ct0 gamma0 cmd3 should return true *)
+(* print_string "Running test test";;  *)
+(* lookup gamma0 "s" *)
+print_string "Running test 3";; 
+
+let test3 = typecheck_cmd ct0 gamma0 cmd3 (* should return true *)
   
 (* let test4 = typecheck_cmd ct0 gamma1 cmd4 should return true *)
   
