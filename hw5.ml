@@ -56,8 +56,8 @@ let lookup_method (ct : class_table) (c : ident) (m : ident) : mdecl option =
   lookup_method_aux (rev (methods ct c)) m
 
 let rec subtype (ct : class_table) (t1 : typ) (t2 : typ) : bool = (match t1, t2 with
-  | IntTy, ClassTy c -> false
   | IntTy, IntTy  -> true
+  | IntTy, ClassTy c -> false
   | ClassTy c, IntTy  ->  false
   | ClassTy sub, ClassTy super -> if sub = super then true else (if sub = "Object" then false
     else (match lookup_class ct sub with 
@@ -99,12 +99,25 @@ let rec typecheck_cmd (ct : class_table) (gamma : context) (c : cmd) : bool =
       (match gamma "__ret", type_of ct gamma e with
        | Some t1, Some t2 -> subtype ct t2 t1
        | _, _ -> false)
-  (* | New (object_name, class_name, args) -> (subtype (type_of (lookup gamma object_name)) (type_of class_name)) *)
   | New (object_name, class_name, args) -> (match (lookup gamma object_name), (lookup_class ct class_name) with
     | Some (object_type), Some(cdecl) -> (subtype ct object_type (ClassTy class_name) &&  
-            (typecheck_list ct gamma args (types_of_params cdecl.fields)))
-    | _, _ -> false
+            (typecheck_list ct gamma args (types_of_params (fields ct cdecl.cname)))) 
+    | _, _ -> false)
+
+  | Invoke(assignee, object_exp, method_name, args) -> match object_exp with 
+    | Var (object_name) -> (match (lookup gamma assignee), (lookup gamma object_name) with
+      | Some(assignee_type), Some(ClassTy object_class_name) -> (match lookup_method ct object_class_name method_name with
+        | Some (mdecl) -> (subtype ct mdecl.ret assignee_type) && (typecheck_list ct gamma args (types_of_params (mdecl.params))))
   )
+
+(* x = s.area(); *)
+(*
+x = assignee
+s = object_name
+area = method_name
+args = args
+*)
+
     
 
 (* test cases *)  
@@ -133,7 +146,7 @@ let gamma2 : context = fun y ->
 
 let exp2 : exp = GetField (Var "s", "id");;
   
-let cmd3 : cmd =
+let cmd3 : cmd = 
   Seq (New ("s", "Square", [Num 0; Num 2]),
        (* s = new Square(0, 2); *)
        Assign ("y", Add (GetField (Var "s", "side"), Num 1)));;
@@ -167,12 +180,11 @@ let test1b = subtype ct0 (ClassTy "Square") (ClassTy "Shape");; (* should return
 print_string "Running test 2";; 
 let test2 = (type_of ct0 gamma0 exp2 = Some IntTy);; (* should return true *)
   
-(* print_string "Running test test";;  *)
-(* lookup gamma0 "s" *)
 print_string "Running test 3";; 
 
-let test3 = typecheck_cmd ct0 gamma0 cmd3 (* should return true *)
+let test3 = typecheck_cmd ct0 gamma0 cmd3 (* should return true*)
+
+
+let test4 = typecheck_cmd ct0 gamma1 cmd4 (* should return true *)
   
-(* let test4 = typecheck_cmd ct0 gamma1 cmd4 should return true *)
-  
-(* let test5 = typecheck_cmd ct0 gamma0 cmd5 should return true *)
+let test5 = typecheck_cmd ct0 gamma0 cmd5 (* should return true *)
