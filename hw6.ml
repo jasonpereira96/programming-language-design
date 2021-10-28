@@ -16,7 +16,11 @@ let omega : exp = App (Lam ("x", App (Var "x", Var "x")), Lam ("x", App (Var "x"
 
 
 (* problem 3 *)
-let rec vars (l : exp) : ident list = (* replace this *) []
+let rec vars (l : exp) : ident list = (match l with 
+  | Var (ident) -> [ident]
+  | Lam (ident, exp) -> ident :: vars exp
+  | App (exp1, exp2) -> vars exp1 @ vars exp2
+  )
 
 let rec fresh_aux (l : ident list) (i : int): ident =
   let s = String.make 1 (Char.chr i) in
@@ -41,7 +45,24 @@ let rec eval (l : exp) : exp option =
                      | _ -> None)
   | _ -> Some l
 
-let test3 = eval (App (lam1, Var "y"))
+let test3 = eval (App (lam1, Var "y"));;
 
 (* problem 4 
+*)
+
+print_string "Problem 1(a)";;
+eval (App (Lam ("x", Var "x"), Var "y"));;
+
+print_string "Problem 1(b)";;
+eval (App (Lam ("x", Lam ("y", Var "x")), Var "z"));;
+
+print_string "Problem 1(c)";;
+eval (App (App (Lam ("x", Lam ("x", Var "x")), Var "x"), Lam ("y", Var "y")));;
+
+(* Did not notice any differences between expected and computed values *)
+
+(* problem 5 *
+The function eval() is using call by name because the subst() function does not compute an expression 
+fully to a value before applying a function.
+We can change this by evaluating a the given expression to a value before executing the application step.
 *)
