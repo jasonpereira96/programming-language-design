@@ -109,15 +109,6 @@ let rec typecheck_cmd (ct : class_table) (gamma : context) (c : cmd) : bool =
       | Some(assignee_type), Some(ClassTy object_class_name) -> (match lookup_method ct object_class_name method_name with
         | Some (mdecl) -> (subtype ct mdecl.ret assignee_type) && (typecheck_list ct gamma args (types_of_params (mdecl.params))))
   )
-
-(* x = s.area(); *)
-(*
-x = assignee
-s = object_name
-area = method_name
-args = args
-*)
-
     
 
 (* test cases *)  
@@ -168,23 +159,12 @@ let cmd5 : cmd =
        (* x = s.area(); *)
   
 (* run the tests *)
+let test1 = subtype ct0 (ClassTy "Square") (ClassTy "Object") (* should return true *)
 
-
-
-print_string "Running test 1";; 
-let test1 = subtype ct0 (ClassTy "Square") (ClassTy "Object");; (* should return true *)
-
-print_string "Running test 1b";; 
-let test1b = subtype ct0 (ClassTy "Square") (ClassTy "Shape");; (* should return true *)
-
-print_string "Running test 2";; 
-let test2 = (type_of ct0 gamma0 exp2 = Some IntTy);; (* should return true *)
+let test2 = (type_of ct0 gamma0 exp2 = Some IntTy) (* should return true *)
   
-print_string "Running test 3";; 
-
-let test3 = typecheck_cmd ct0 gamma0 cmd3 (* should return true*)
-
-
+let test3 = typecheck_cmd ct0 gamma0 cmd3 (* should return true *)
+  
 let test4 = typecheck_cmd ct0 gamma1 cmd4 (* should return true *)
   
 let test5 = typecheck_cmd ct0 gamma0 cmd5 (* should return true *)

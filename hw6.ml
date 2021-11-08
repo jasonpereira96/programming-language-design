@@ -1,8 +1,8 @@
 (*
 problem 1
   (Î»x. x) y evaluates to y
-  (Î»x. (Î»y. x)) z evaluates to Î»y.z
-  (Î»x. (Î»x. x) x) (Î»y. y) evaluates to Î»y.y
+  (Î»x. (Î»y. x)) z evaluates to Î»y.z (lambda y.z)
+  (Î»x. (Î»x. x) x) (Î»y. y) evaluates to Î»y.y (lambda y.y)
 *)
 
 type ident = string
@@ -64,5 +64,5 @@ eval (App (App (Lam ("x", Lam ("x", Var "x")), Var "x"), Lam ("y", Var "y")));;
 (* problem 5 *
 The function eval() is using call by name because the subst() function does not compute an expression 
 fully to a value before applying a function.
-We can change this by evaluating a the given expression to a value before executing the application step.
+We can change this by evaluating a the given expression (l2) to a value before executing the application step.
 *)
