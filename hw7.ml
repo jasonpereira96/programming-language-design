@@ -38,10 +38,15 @@ let rec eval (e : exp) (r : env) : value option =
         | Some(Closure(x, e, r1)) , Some(v) -> (eval e (update r1 x v))
         | _, _ -> None)
    | Inl (e1) -> (match eval e1 r with
-      | Some (v) -> Some(InlVal(v)))
+      | Some (v) -> Some(InlVal(v))
+      | _ -> None)
    | Inr (e1) -> (match eval e1 r with
-      | Some (v) -> Some(InrVal(v)))
+      | Some (v) -> Some(InrVal(v))
+      | _ -> None)
 
+   | Match(e_, x1, e1, x2, e2) -> (match (eval e_ r) with
+      | Some(InlVal (v)) ->  eval e1 (update r x1 v)
+      | Some(InrVal (v)) ->  eval e2 (update r x2 v))
 
 let env1 : env = update empty_env "b" (IntVal 1);;
 print_string "Test 1";;
