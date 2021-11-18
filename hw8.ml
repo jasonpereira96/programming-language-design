@@ -53,6 +53,37 @@ let rec get_constraints (gamma : context) (e : exp) : (typ * constraints) =
     let (t2, c2) = get_constraints gamma exp2 in
     (TupleTy(t1, t2), c1 @ c2)
 
+  | Fst (exp_) -> 
+    let (t, c) = get_constraints gamma exp_ in
+    let t1 = fresh_tyvar () in
+    let t2 = fresh_tyvar () in
+    (t1, (t, TupleTy(t1, t2)) :: c)
+
+  | Snd (exp_) -> 
+    let (t, c) = get_constraints gamma exp_ in
+    let t1 = fresh_tyvar () in
+    let t2 = fresh_tyvar () in
+    (t2, (t, TupleTy(t1, t2)) :: c)
+
+  | Inl (exp_) -> 
+      let (t1, c) = get_constraints gamma exp_ in
+      let t2 = fresh_tyvar () in
+      (SumTy(t1, t2), c)
+
+  | Inr (exp_) -> 
+    let (t2, c) = get_constraints gamma exp_ in
+    let t1 = fresh_tyvar () in
+    (SumTy(t1, t2), c)
+
+  | Match (e_, x1, e1, x2, e2) -> 
+    let (t, c) = get_constraints gamma e_ in
+    let ta = fresh_tyvar () in
+    let tb = fresh_tyvar () in
+    let (t1, c1) = get_constraints (update gamma x1 ta) e1 in
+    let (t2, c2) = get_constraints (update gamma x2 tb) e2 in
+    (t1, (t, SumTy(ta, tb)) :: (t1, t2) :: c @ c1 @ c2)
+
+
      
 type subst = tident -> typ option
 let empty_subst : subst = fun _ -> None
@@ -107,10 +138,11 @@ let e1 = Fun ("x", Fun ("y", Tuple (Add (Var "x", Num 1), Add (Var "y", Num 1)))
 print_string "Test case 1";;
 let test1 = type_of e1;;
 
-print_string "Test case 2"
-let e2 = Fun ("x", Add (Fst (Var "x"), Snd (Var "x")))
-let test2 = type_of e2
+print_string "Test case 2";;
+let e2 = Fun ("x", Add (Fst (Var "x"), Snd (Var "x")));;
+let test2 = type_of e2;;
 
 (* grad student problem *)
-let e3 = Fun ("x", Match (Var "x", "a", Inr (Add (Var "a", Num 1)), "b", Inl (Add (Num 2, Var "b"))))
-(*let test3 = type_of e3*)
+print_string "Test case 3";;
+let e3 = Fun ("x", Match (Var "x", "a", Inr (Add (Var "a", Num 1)), "b", Inl (Add (Num 2, Var "b"))));;
+let test3 = type_of e3
