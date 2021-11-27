@@ -1,3 +1,5 @@
+___ret___ = '___ret___'
+
 class Value:
   """The class Value represents a value in a program. Values considered for now are
   numbers, booleans, strings and arrays. All these are types are implemented in Python
@@ -5,6 +7,15 @@ class Value:
   """
   def __init__(self, v) -> None:
     self.value = v
+
+class Map(Value):
+  """
+  Represents an Map in the program. 
+  """
+  def __init__(self, key_datatype=None, value_datatype=None) -> None:
+    self.key_datatype = key_datatype
+    self.value_datatype = value_datatype
+    self.map = {}
 
 class Array(Value):
   """
@@ -153,9 +164,45 @@ class For(Command):
     self.update = update
     self.block_statement = block_statement
 
+class FunctionDecl(Command):
+  def __init__(self, function) -> None:
+    self.function = function
+
+class Call:
+  def __init__(self, function_name, args) -> None:
+    self.function_name = function_name
+    self.args = args
+
+class Ret(Command):
+  def __init__(self, ret_value) -> None:
+    self.ret_value = ret_value
+
+class Function(Value):
+  def __init__(self, name, body) -> None:
+    self.name = name
+    self.body = body
+
+def lookup(key, stack):
+  for state in reversed(stack):
+    if key in state:
+      return state[key]
+
+  raise Exception("{} not defined".format(key))
+
+def update_state(key, value, stack):
+  stack[-1][key] = value
+
+def evaluate_args(args, stack):
+  evaluated_args = {}
+  for k in dict.keys(args):
+    evaluated_args[k] = evaluate(args[k], stack)
+  return evaluated_args
+
 # the evaluate function which is intented to evalute an expression takes the state as well
 # because it needs read-only access to the state for the subscript operation (Eg: arr[2])
-def evaluate(exp, state={}): 
+def evaluate(exp, stack): 
+  assert stack is not None and len(stack) > 0
+
   if type(exp) == Num:
     return exp.value
 
@@ -166,88 +213,106 @@ def evaluate(exp, state={}):
     return exp.value
 
   if type(exp) == Var:
-    return state[exp.value]
+    # return state[exp.value]
+    return lookup(exp.value, stack)
+
 
   if type(exp) == Array:
     return exp.values
 
   if type(exp) == Add:
-    return evaluate(exp.v1, state) + evaluate(exp.v2, state) # Add works for both string concatenation and numeric addition
+    return evaluate(exp.v1, stack) + evaluate(exp.v2, stack) # Add works for both string concatenation and numeric addition
 
   if type(exp) == Sub:
-    return evaluate(exp.v1, state) - evaluate(exp.v2, state)
+    return evaluate(exp.v1, stack) - evaluate(exp.v2, stack)
 
   if type(exp) == Mul:
-    return evaluate(exp.v1, state) * evaluate(exp.v2, state)
+    return evaluate(exp.v1, stack) * evaluate(exp.v2, stack)
 
   if type(exp) == Div:
-    return evaluate(exp.v1, state) / evaluate(exp.v2, state)
+    return evaluate(exp.v1, stack) / evaluate(exp.v2, stack)
   
   if type(exp) == And:
-    return evaluate(exp.v1, state) and evaluate(exp.v2, state)
+    return evaluate(exp.v1, stack) and evaluate(exp.v2, stack)
 
   if type(exp) == Or:
-    return evaluate(exp.v1, state) or evaluate(exp.v2, state)
+    return evaluate(exp.v1, stack) or evaluate(exp.v2, stack)
 
   if type(exp) == Eq:
-    return evaluate(exp.v1, state) == evaluate(exp.v2, state)
+    return evaluate(exp.v1, stack) == evaluate(exp.v2, stack)
 
   if type(exp) == LessThan:
-    return evaluate(exp.v1, state) < evaluate(exp.v2, state)
+    return evaluate(exp.v1, stack) < evaluate(exp.v2, stack)
 
   if type(exp) == GetField:
-    index = evaluate(exp.exp, state)
-    assert type(index) == int 
-    array = state[exp.ident]
-    assert index < len(array)
+    index = evaluate(exp.exp, stack)
+    # assert type(index) == int 
+    array = lookup(exp.ident, stack=stack)
+    # assert index < len(array)
     print("returning")  
     return array[index]
+
+  if type(exp) == Map:
+    return exp.map
+
+  if type(exp) == Function:
+    return {
+      'name': exp.name,
+      'body': exp.body,
+      'is_function': True
+    }
+
+  if type(exp) == Call:
+    return execute(exp, stack)
   
 
-def execute(command, state):
+def execute(command, stack):
+  assert stack is not None and len(stack) > 0
 
   if type(command) == Assignment:
     assignment_statement = command
-    value = evaluate(assignment_statement.exp, state)
+    value = evaluate(assignment_statement.exp, stack)
     assignee = assignment_statement.assignee
-    state[assignee] = value
+    # state[assignee] = value
+    update_state(assignee, value, stack)
 
   elif type(command) == Sequence:
-    execute(command.c1, state)
-    execute(command.c2, state)
+    execute(command.c1, stack)
+    execute(command.c2, stack)
 
   elif type(command) == IfElse:
-    is_true = evaluate(command.condition, state)
+    is_true = evaluate(command.condition, stack)
     if is_true:
-      execute(command.c1, state)
+      execute(command.c1, stack)
     else:
-      execute(command.c2, state)
+      execute(command.c2, stack)
 
   elif type(command) == BlockStatement:
     for c in command.command_list:
-      execute(c, state)
+      execute(c, stack)
 
   elif type(command) == IfElifElse:
     N = len(command.conditions)
     for i in range(N):
-      if evaluate(command.conditions[i], state):
-        execute(command.commands[i], state)
-        return state
+      if evaluate(command.conditions[i], stack):
+        execute(command.commands[i], stack)
+        return
     
-    execute(command.commands[-1], state)
-    return state
+    execute(command.commands[-1], stack)
+    # return state
 
   elif type(command) == While:
-    c = evaluate(command.condition, state)
+    c = evaluate(command.condition, stack)
     if c == True:
-      execute(command.block_statement, state)
-      execute(command, state)
+      execute(command.block_statement, stack)
+      execute(command, stack)
   
 
   elif type(command) == SetField:
-    k = evaluate(command.exp, state)
-    v = evaluate(command.exp_to_set, state)
-    array = state[command.assignee] 
+    k = evaluate(command.exp, stack)
+    v = evaluate(command.exp_to_set, stack)
+    # array = state[command.assignee]
+    array = lookup(command.assignee, stack)
     array[k] = v
 
   elif type(command) == For:
@@ -261,11 +326,33 @@ def execute(command, state):
     update = command.update
     body = command.block_statement
 
-    execute(initialization, state)
+    execute(initialization, stack)
     s = While(condition=condition, block_statement=BlockStatement(command_list=[body, update]))
-    execute(s, state)
+    execute(s, stack)
+
+  elif type(command) == FunctionDecl:
+    # state[command.function.name] = command.function.body
+    update_state(command.function.name, command.function.body, stack)
     
-  return state
+  # return state
+  elif type(command) == Call:
+    function_bs = lookup(command.function_name, stack)#.function_body
+    args = evaluate_args(command.args, stack)
+    stack.append(args)
+    execute(function_bs, stack) # adding an activation frame to the stack
+    stack.pop()
+    # now the stack should have a ___ret___
+    ret_value = stack[-1][___ret___]
+    del stack[-1][___ret___]
+    return ret_value
+
+  elif type(command) == Ret:
+    if len(stack) == 1:
+      raise "return statement outside function"
+  
+    ret_value = evaluate(command.ret_value, stack)
+    stack[-2][___ret___] = ret_value
+
 
 
 """
@@ -285,6 +372,7 @@ func main() {
 """
 
 init_state = {} # state is being stored as a Python dictionary
+stack = [init_state]
 s1 = Assignment("a", Num(0))
 s2 = Assignment("arr", Array(Num, 5))
 s3 = Assignment("result", Num(0))
@@ -312,9 +400,32 @@ s12 = For(initialization=Assignment("counter", Num(0)),
   condition=LessThan(Var("counter"), Num(10)), 
   update=Assignment("counter", Add(Var("counter"), Num(1))), block_statement=BlockStatement([]))
 
-statements = [s1,s2,s3,s4, s5, s6, s7, s8, s9, s11, s12]
+s13 = Assignment("m", Map())
+s14 = SetField("m", Num(2), Num(20))
+s15 = Assignment("kl", GetField("m", Num(2)))
+
+
+s16 = FunctionDecl(Function("mff", BlockStatement(command_list=[Ret(Add(Var("a"), Var("b")))])))
+s17 = Assignment("total", Call("mff", {'a': Num(100), 'b': Num(500)}))
+
+f1 = IfElifElse(conditions=[Eq(Var("n"), Num(0)), Eq(Var("n"), Num(1))], 
+  commands=[Ret(Var("n")), Ret(Var("n")), 
+  BlockStatement([
+    Ret(Add(Call("fib", {'n': Sub(Var('n'), Num(1))}), Call("fib", {'n': Sub(Var('n'), Num(2))})))
+  ])]
+)
+s18 = FunctionDecl(Function("fib", f1))
+
+s19 = Assignment("xxx", Call("fib", {'n': Num(14)}))
+
+
+statements = [s1,s2,s3,s4, s5, s6, s7, s8, s9, s11, s12, s13, s14, s15, s16, s17, s18, s19]
+# statements = [s18, s19]
+
+# fib sequence
+# [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377]
 
 for statement in statements:
-  execute(statement, init_state)
+  execute(statement, stack)
 
 print(init_state)
