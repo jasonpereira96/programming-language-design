@@ -73,6 +73,12 @@ class Eq(BinaryExp):
   pass
 class LessThan(BinaryExp):
   pass
+class LessThanEq(BinaryExp):
+  pass
+class NotEq(BinaryExp):
+  pass
+class Mod(BinaryExp):
+  pass
 
 class Var(Exp):
   def __init__(self, ident) -> None:
@@ -241,15 +247,24 @@ def evaluate(exp, stack):
   if type(exp) == Eq:
     return evaluate(exp.v1, stack) == evaluate(exp.v2, stack)
 
+  if type(exp) == NotEq:
+    return evaluate(exp.v1, stack) != evaluate(exp.v2, stack)
+
   if type(exp) == LessThan:
     return evaluate(exp.v1, stack) < evaluate(exp.v2, stack)
+
+  if type(exp) == LessThanEq:
+    return evaluate(exp.v1, stack) <= evaluate(exp.v2, stack)
+  
+  if type(exp) == Mod:
+    return evaluate(exp.v1, stack) % evaluate(exp.v2, stack)
+
 
   if type(exp) == GetField:
     index = evaluate(exp.exp, stack)
     # assert type(index) == int 
     array = lookup(exp.ident, stack=stack)
     # assert index < len(array)
-    print("returning")  
     return array[index]
 
   if type(exp) == Map:
@@ -406,7 +421,7 @@ s15 = Assignment("kl", GetField("m", Num(2)))
 
 
 s16 = FunctionDecl(Function("mff", BlockStatement(command_list=[Ret(Add(Var("a"), Var("b")))])))
-s17 = Assignment("total", Call("mff", {'a': Num(100), 'b': Num(500)}))
+s17 = Assignment("total1", Call("mff", {'a': Num(100), 'b': Num(500)}))
 
 f1 = IfElifElse(conditions=[Eq(Var("n"), Num(0)), Eq(Var("n"), Num(1))], 
   commands=[Ret(Var("n")), Ret(Var("n")), 
@@ -425,7 +440,103 @@ statements = [s1,s2,s3,s4, s5, s6, s7, s8, s9, s11, s12, s13, s14, s15, s16, s17
 # fib sequence
 # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377]
 
-for statement in statements:
-  execute(statement, stack)
+# Program to find sum of the first N numbers
+'''
+total := 0
+for i := 0; i <= 10; i++ {
+  total := total + i
+}
+'''
+program1 = [
+  Assignment("total", Num(0)),
+  For(
+    Assignment("i", Num(1)),
+    LessThanEq(Var("i"), Num(10)),
+    Assignment("i", Add(Var("i"), Num(1))),
+    BlockStatement([Assignment("total", Add(Var("total"), Var("i")))])
+  )
+]
+# Program to find the sum of an array
+'''
+var a [5]int
+for j := 1; j < 5; j++ {
+  a[j] = j * 2
+}
+var total := 0
+for j := 1; j < 5; j++ {
+  total = total + a[j]
+}
+'''
+program2 = [
+  Assignment("a", Array(Num, 5)),
+  For(Assignment("j", Num(1)), LessThan(Var("j"), Num(5)), Assignment("j", Add(Var('j'), Num(1))), block_statement=BlockStatement([
+    SetField("a", Var("j"), Mul(Var('j'), Num(2)))
+  ])),
+  Assignment("total", Num(0)),
+  For(Assignment("j", Num(1)), LessThan(Var("j"), Num(5)), Assignment("j", Add(Var('j'), Num(1))), block_statement=BlockStatement([
+    Assignment("total", Add(Var("total"), GetField("a", Var("j")))),
+  ]))
+]
+# Program to find GCD of 2 numbers
+'''
+func gcd(a, b int) int {
+	for b != 0 {
+		t := b
+		b = a % b
+		a = t
+	}
+	return a
+}
 
-print(init_state)
+func main() {
+  var g int = gcd(130, 13)
+}
+'''
+program3 = [
+  FunctionDecl(Function("gcd", BlockStatement([
+    For(BlockStatement([]), NotEq(Var("b"), Num(0)), BlockStatement([]), BlockStatement([
+      Assignment("t", Var("b")),
+      Assignment("b", Mod(Var("a"), Var("b"))),
+      Assignment("a", Var("t"))
+    ])),
+    Ret(Var("a"))
+  ]))),
+  Assignment("g", Call("gcd", {"a": Num(130), "b": Num(13)}))
+]
+'''
+func fib(n int) int {
+	if n == 0 {
+    return 0
+  } else if n == 1 {
+    return 1
+  } else {
+    return fib(n-1) + fib(n-2)
+  }
+}
+func main() {
+    fib(14)
+}
+'''
+
+f1 = IfElifElse(conditions=[Eq(Var("n"), Num(0)), Eq(Var("n"), Num(1))], 
+  commands=[Ret(Var("n")), Ret(Var("n")), 
+  BlockStatement([
+    Ret(Add(Call("fib", {'n': Sub(Var('n'), Num(1))}), Call("fib", {'n': Sub(Var('n'), Num(2))})))
+  ])]
+)
+f2 = FunctionDecl(Function("fib", f1))
+f3 = Assignment("f", Call("fib", {'n': Num(14)}))
+
+program4 = [f2, f3]
+
+programs = [
+  program1,
+  program2,
+  program3,
+  program4
+]
+for program in programs:
+  init_state = {}
+  for statement in program:
+    execute(statement, stack=[init_state])
+  print(init_state)
