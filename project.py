@@ -153,11 +153,7 @@ class While(Command):
     self.condition = condition
     self.block_statement = block_statement
 
-'''
-for j := 7; j <= 9; j++ {
-  fmt.Println(j)
-}
-'''
+
 class For(Command):
   def __init__(self, initialization, condition, update, block_statement) -> None:
     super(Command, self).__init__()
@@ -262,9 +258,7 @@ def evaluate(exp, stack):
 
   if type(exp) == GetField:
     index = evaluate(exp.exp, stack)
-    # assert type(index) == int 
     array = lookup(exp.ident, stack=stack)
-    # assert index < len(array)
     return array[index]
 
   if type(exp) == Map:
@@ -288,7 +282,6 @@ def execute(command, stack):
     assignment_statement = command
     value = evaluate(assignment_statement.exp, stack)
     assignee = assignment_statement.assignee
-    # state[assignee] = value
     update_state(assignee, value, stack)
 
   elif type(command) == Sequence:
@@ -314,7 +307,6 @@ def execute(command, stack):
         return
     
     execute(command.commands[-1], stack)
-    # return state
 
   elif type(command) == While:
     c = evaluate(command.condition, stack)
@@ -326,16 +318,10 @@ def execute(command, stack):
   elif type(command) == SetField:
     k = evaluate(command.exp, stack)
     v = evaluate(command.exp_to_set, stack)
-    # array = state[command.assignee]
     array = lookup(command.assignee, stack)
     array[k] = v
 
   elif type(command) == For:
-    # self.initialization = initialization
-    # self.condition = condition
-    # self.update = update
-    # self.block_statement = block_statement
-
     initialization = command.initialization
     condition = command.condition
     update = command.update
@@ -346,12 +332,10 @@ def execute(command, stack):
     execute(s, stack)
 
   elif type(command) == FunctionDecl:
-    # state[command.function.name] = command.function.body
     update_state(command.function.name, command.function.body, stack)
     
-  # return state
   elif type(command) == Call:
-    function_bs = lookup(command.function_name, stack)#.function_body
+    function_bs = lookup(command.function_name, stack)
     args = evaluate_args(command.args, stack)
     stack.append(args)
     execute(function_bs, stack) # adding an activation frame to the stack
@@ -370,75 +354,7 @@ def execute(command, stack):
 
 
 
-"""
-The following Go program being executed:
-func main() {
-
-  var a int = 0
-	var arr [5]int
-	var result = 0
-
-	if a == 0 {
-		result = 5
-	} else {
-		result = arr[0]
-	}
-}
-"""
-
-init_state = {} # state is being stored as a Python dictionary
-stack = [init_state]
-s1 = Assignment("a", Num(0))
-s2 = Assignment("arr", Array(Num, 5))
-s3 = Assignment("result", Num(0))
-
-s4 = IfElse(Eq ( Var("a"), Num(0)), 
-  Assignment("result", Num(5)), 
-  Assignment("result", GetField("arr", Num(0)))
-)
-
-s5 = SetField("arr", Num(2), Num(5))
-s6 = SetField("arr", Num(3), Num(2))
-s7 = SetField("arr", Num(4), Num(1))
-
-s8 = Assignment("a", Num(0))
-
-s9 = Assignment("a", GetField("arr", Num(0))) # a = a + 0
-
-bs = BlockStatement([
-  Assignment("a", Add(Var("a"), Num(100)))
-])
-
-s11 = While(LessThan(Var("a"), Num(500)), bs)
-
-s12 = For(initialization=Assignment("counter", Num(0)), 
-  condition=LessThan(Var("counter"), Num(10)), 
-  update=Assignment("counter", Add(Var("counter"), Num(1))), block_statement=BlockStatement([]))
-
-s13 = Assignment("m", Map())
-s14 = SetField("m", Num(2), Num(20))
-s15 = Assignment("kl", GetField("m", Num(2)))
-
-
-s16 = FunctionDecl(Function("mff", BlockStatement(command_list=[Ret(Add(Var("a"), Var("b")))])))
-s17 = Assignment("total1", Call("mff", {'a': Num(100), 'b': Num(500)}))
-
-f1 = IfElifElse(conditions=[Eq(Var("n"), Num(0)), Eq(Var("n"), Num(1))], 
-  commands=[Ret(Var("n")), Ret(Var("n")), 
-  BlockStatement([
-    Ret(Add(Call("fib", {'n': Sub(Var('n'), Num(1))}), Call("fib", {'n': Sub(Var('n'), Num(2))})))
-  ])]
-)
-s18 = FunctionDecl(Function("fib", f1))
-
-s19 = Assignment("xxx", Call("fib", {'n': Num(14)}))
-
-
-statements = [s1,s2,s3,s4, s5, s6, s7, s8, s9, s11, s12, s13, s14, s15, s16, s17, s18, s19]
-# statements = [s18, s19]
-
-# fib sequence
-# [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377]
+# Test cases
 
 # Program to find sum of the first N numbers
 '''
@@ -503,6 +419,8 @@ program3 = [
   ]))),
   Assignment("g", Call("gcd", {"a": Num(130), "b": Num(13)}))
 ]
+
+# Program to find the nth fibonacci number
 '''
 func fib(n int) int {
 	if n == 0 {
@@ -529,14 +447,40 @@ f3 = Assignment("f", Call("fib", {'n': Num(14)}))
 
 program4 = [f2, f3]
 
+def run_program(program):
+  init_state = {}
+  for statement in program:
+    execute(statement, stack=[init_state])
+  return init_state
+
 programs = [
   program1,
   program2,
   program3,
   program4
 ]
-for program in programs:
-  init_state = {}
-  for statement in program:
-    execute(statement, stack=[init_state])
-  print(init_state)
+
+if __name__ == "__main__":
+  print("Program to find sum of the first N numbers")
+  final_state = run_program(program1)
+  print("Final state:")
+  print(final_state)
+  print("Sum of first 10 numbers: {}".format(final_state['total']))
+
+  print("Program to find the sum of an array")
+  final_state = run_program(program2)
+  print("Final state:")
+  print(final_state)
+  print("Sum of the array is: {}".format(final_state['total']))
+
+  print("Program to find the GCD of 13 and 130")
+  final_state = run_program(program3)
+  print("Final state:")
+  print(final_state)
+  print("GCD of 13 and 130 is: {}".format(final_state['g']))
+
+  print("Program to find the 14th fibonacci number")
+  final_state = run_program(program4)
+  print("Final state:")
+  print(final_state)
+  print("The 14th fibonacci number is: {}".format(final_state['f']))
